@@ -1,0 +1,120 @@
+schemaVersion: 2.2.0
+metadata:
+  name: devspace-lab-ica
+attributes:
+  controller.devfile.io/storage-type: ephemeral
+
+projects:
+  - name: calculadora-rtc-regime-regular
+    git:
+      remotes:
+        origin: 'https://github.com/ReceitaFederal/calculadora-rtc-regime-regular.git'
+      checkoutFrom:
+        revision: main
+
+components:
+  - name: udi
+    container:
+      image: quay.io/devfile/universal-developer-image:ubi8-latest
+      memoryLimit: 4Gi
+      memoryRequest: 512Mi
+      cpuLimit: "2"
+      cpuRequest: 100m
+      mountSources: true
+      sourceMapping: /projects
+      env:
+        - name: MAVEN_OPTS
+          value: '-Dfile.encoding=UTF-8'
+        # LLM local (Ramalama) acessivel pelos agentes dentro do pod
+        - name: LOCAL_LLM_BASE_URL
+          value: 'http://localhost:8080/v1'
+        - name: LOCAL_LLM_MODEL
+          value: 'qwen2.5-coder:3b'
+      endpoints:
+        - exposure: public
+          name: calculadora-api
+          protocol: http
+          targetPort: 8081
+
+  # LLM local, sem API key. Servido em 8080 (rede do pod e compartilhada).
+  # Por isso a API da calculadora usa 8081 (endpoint e run-offline).
+  - name: ramalama
+    container:
+      image: quay.io/ramalama/ramalama:latest
+      memoryLimit: 4Gi
+      memoryRequest: 512Mi
+      cpuLimit: "2"
+      cpuRequest: 200m
+      env:
+        - name: HOME
+          value: /models
+      args:
+        - "ramalama"
+        - "--nocontainer"
+        - "--store"
+        - "/models"
+        - "serve"
+        - "--host"
+        - "0.0.0.0"
+        - "--port"
+        - "8080"
+        - "ollama://qwen2.5-coder:3b"
+      volumeMounts:
+        - name: ramalama-models
+          path: /models
+
+  - name: ramalama-models
+    volume:
+      size: 8Gi
+
+commands:
+  - id: setup-java21
+    exec:
+      component: udi
+      commandLine: "source ~/.sdkman/bin/sdkman-init.sh && sdk install java 21.0.13.0+9-tem && sdk default java 21.0.13.0+9-tem && java -version"
+
+  - id: verify-java
+    exec:
+      component: udi
+      commandLine: "cd /projects/calculadora-rtc-regime-regular && java -version && ./mvnw --version"
+
+  - id: migrate-db
+    exec:
+      component: udi
+      commandLine: "cd /projects/calculadora-rtc-regime-regular && mkdir -p ./calculadora/db && ./mvnw flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf --batch-mode --errors"
+
+  - id: test
+    exec:
+      component: udi
+      commandLine: "cd /projects/calculadora-rtc-regime-regular && ./mvnw clean test jacoco:report"
+
+  - id: run-offline
+    exec:
+      component: udi
+      commandLine: "cd /projects/calculadora-rtc-regime-regular && ./mvnw spring-boot:run -Dspring-boot.run.profiles=offline -Dserver.port=8081"
+
+  - id: copyconfig
+    exec:
+      component: udi
+      commandLine: "mkdir -p /home/user/.continue && curl -fsSL https://raw.githubusercontent.com/remingtonsb/cde-ramalama-continue/master/continue-config.yaml -o /home/user/.continue/config.yaml && echo 'OK Continue config'"
+
+  # Coding Agents (claude, codex, opencode, cline): instala as CLIs, ajusta PATH
+  # e configura Codex/Claude Code. As chaves chegam como env vars pelo Secret
+  # 'agents-env' (ver README-AGENTS.md). Ver scripts/setup-agents.sh.
+  - id: install-agents
+    exec:
+      component: udi
+      commandLine: "bash /projects/devspace-lab-ica/scripts/setup-agents.sh"
+
+  # ica-edge: instalacao depende do canal interno IBM. Ajustar o comando abaixo.
+  - id: install-ica-edge
+    exec:
+      component: udi
+      commandLine: "echo 'TODO: informar comando de instalacao do ica-edge'"
+
+events:
+  postStart:
+    - setup-java21
+    - install-agents
+    - copyconfig
+    - migrate-db
