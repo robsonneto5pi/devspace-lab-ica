@@ -67,6 +67,40 @@ wire_api = "responses"
 EOF
 echo "ok ~/.codex/config.toml"
 
+# OpenCode: provider proprio apontando para o gateway ICA (chave via OPENCODE_API_KEY)
+mkdir -p "$HOME/.config/opencode"
+cat > "$HOME/.config/opencode/opencode.json" <<EOF
+{
+  "\$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ica": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "ICA Gateway",
+      "options": {
+        "baseURL": "$ICA_BASE_URL",
+        "apiKey": "{env:OPENCODE_API_KEY}"
+      },
+      "models": {
+        "gpt-5.1": { "name": "GPT 5.1" },
+        "claude-sonnet-5-5": { "name": "Claude Sonnet 5.5" },
+        "claude-haiku-5-5": { "name": "Claude Haiku 5.5" }
+      }
+    }
+  },
+  "model": "ica/gpt-5.1"
+}
+EOF
+echo "ok ~/.config/opencode/opencode.json"
+
+# Cline: provider openai-compatible apontando para o gateway ICA (chave via CLINE_API_KEY)
+if [ -n "${CLINE_API_KEY:-}" ]; then
+  if "$NPM_PREFIX/bin/cline" auth -p openai -k "$CLINE_API_KEY" -m gpt-5.1 -b "$ICA_BASE_URL" >/dev/null 2>&1; then
+    echo "ok cline auth (gateway ICA, gpt-5.1)"
+  else
+    echo "x  cline auth falhou; rode: cline auth -p openai -k \$CLINE_API_KEY -m gpt-5.1 -b $ICA_BASE_URL" >&2
+  fi
+fi
+
 # Verifica se o Secret foi montado (so mostra nomes, nunca valores)
 for v in ANTHROPIC_API_KEY OPENAI_API_KEY OPENCODE_API_KEY CLINE_API_KEY; do
   if [ -n "${!v:-}" ]; then echo "ok $v definida"; else echo "!  $v NAO definida (Secret agents-env nao montado?)" >&2; fi
