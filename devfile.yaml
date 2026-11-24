@@ -64,9 +64,3 @@ commands:
     exec:
       component: udi
       commandLine: "bash /projects/devspace-lab-ica/scripts/setup-agents.sh"
-
-  # ica-edge: instalacao depende do canal interno IBM. Ajustar o comando abaixo.
-  - id: install-ica-edge
-    exec:
-      component: udi
-      commandLine: "echo 'TODO: informar comando de instalacao do ica-edge'"
