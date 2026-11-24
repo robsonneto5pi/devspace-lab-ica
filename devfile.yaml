@@ -112,9 +112,3 @@ commands:
       component: udi
       commandLine: "echo 'TODO: informar comando de instalacao do ica-edge'"
 
-events:
-  postStart:
-    - setup-java21
-    - install-agents
-    - copyconfig
-    - migrate-db
