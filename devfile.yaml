@@ -4,14 +4,6 @@ metadata:
 attributes:
   controller.devfile.io/storage-type: ephemeral
 
-projects:
-  - name: calculadora-rtc-regime-regular
-    git:
-      remotes:
-        origin: 'https://github.com/ReceitaFederal/calculadora-rtc-regime-regular.git'
-      checkoutFrom:
-        revision: main
-
 components:
   - name: udi
     container:
@@ -23,21 +15,13 @@ components:
       mountSources: true
       sourceMapping: /projects
       env:
-        - name: MAVEN_OPTS
-          value: '-Dfile.encoding=UTF-8'
         # LLM local (Ramalama) acessivel pelos agentes dentro do pod
         - name: LOCAL_LLM_BASE_URL
           value: 'http://localhost:8080/v1'
         - name: LOCAL_LLM_MODEL
           value: 'qwen2.5-coder:3b'
-      endpoints:
-        - exposure: public
-          name: calculadora-api
-          protocol: http
-          targetPort: 8081
 
   # LLM local, sem API key. Servido em 8080 (rede do pod e compartilhada).
-  # Por isso a API da calculadora usa 8081 (endpoint e run-offline).
   - name: ramalama
     container:
       image: quay.io/ramalama/ramalama:latest
@@ -68,31 +52,6 @@ components:
       size: 8Gi
 
 commands:
-  - id: setup-java21
-    exec:
-      component: udi
-      commandLine: "source ~/.sdkman/bin/sdkman-init.sh && sdk install java 21.0.13.0+9-tem && sdk default java 21.0.13.0+9-tem && java -version"
-
-  - id: verify-java
-    exec:
-      component: udi
-      commandLine: "cd /projects/calculadora-rtc-regime-regular && java -version && ./mvnw --version"
-
-  - id: migrate-db
-    exec:
-      component: udi
-      commandLine: "cd /projects/calculadora-rtc-regime-regular && mkdir -p ./calculadora/db && ./mvnw flyway:migrate -Dflyway.configFiles=./flyway/flyway-pro.conf --batch-mode --errors"
-
-  - id: test
-    exec:
-      component: udi
-      commandLine: "cd /projects/calculadora-rtc-regime-regular && ./mvnw clean test jacoco:report"
-
-  - id: run-offline
-    exec:
-      component: udi
-      commandLine: "cd /projects/calculadora-rtc-regime-regular && ./mvnw spring-boot:run -Dspring-boot.run.profiles=offline -Dserver.port=8081"
-
   - id: copyconfig
     exec:
       component: udi
@@ -111,4 +70,3 @@ commands:
     exec:
       component: udi
       commandLine: "echo 'TODO: informar comando de instalacao do ica-edge'"
-

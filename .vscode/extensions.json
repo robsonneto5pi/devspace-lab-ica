@@ -4,9 +4,6 @@
     "anthropic.claude-code",
     "openai.chatgpt",
     "sst-dev.opencode",
-    "Continue.continue",
-    "redhat.java",
-    "vscjava.vscode-java-pack",
-    "vmware.vscode-boot-dev-pack"
+    "Continue.continue"
   ]
 }
