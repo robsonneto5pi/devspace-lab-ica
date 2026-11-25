@@ -101,8 +101,50 @@ if [ -n "${CLINE_API_KEY:-}" ]; then
   fi
 fi
 
+# Roo Code: perfil OpenAI Compatible apontando para o gateway /apis/v3 da IBM Services
+# Essentials. Gera ~/Downloads/roo-code-settings.json (contem a chave, so no pod; nao
+# versionar) para importar no Roo: Settings > Import. Chave via ROO_API_KEY.
+if [ -n "${ROO_API_KEY:-}" ]; then
+  mkdir -p "$HOME/Downloads"
+  python3 - <<'PY'
+import json, os
+base = os.environ.get("ROO_BASE_URL", "https://servicesessentials.ibm.com/apis/v3")
+model = os.environ.get("ROO_MODEL", "global/gpt-5.1-chat")
+cfg = {
+    "id": "ica-gateway-profile",
+    "apiProvider": "openai",
+    "openAiBaseUrl": base,
+    "openAiApiKey": os.environ["ROO_API_KEY"],
+    "openAiModelId": model,
+    "openAiStreamingEnabled": True,
+    "openAiCustomModelInfo": {
+        "maxTokens": -1, "contextWindow": 128000, "supportsImages": False,
+        "supportsPromptCache": False, "inputPrice": 0, "outputPrice": 0,
+    },
+}
+out = {
+    "providerProfiles": {
+        "currentApiConfigName": "ica-gateway",
+        "apiConfigs": {"ica-gateway": cfg},
+        "modeApiConfigs": {},
+        "migrations": {"rateLimitSecondsMigrated": True, "diffSettingsMigrated": True,
+                       "openAiHeadersMigrated": True, "consecutiveMistakeLimitMigrated": True,
+                       "todoListEnabledMigrated": True},
+    },
+    "globalSettings": {"mode": "code"},
+}
+p = os.path.expanduser("~/Downloads/roo-code-settings.json")
+with open(p, "w") as f:
+    json.dump(out, f, indent=2)
+os.chmod(p, 0o600)
+PY
+  echo "ok ~/Downloads/roo-code-settings.json (importe no Roo: Settings > Import)"
+else
+  echo "!  ROO_API_KEY NAO definida; perfil do Roo nao gerado" >&2
+fi
+
 # Verifica se o Secret foi montado (so mostra nomes, nunca valores)
-for v in ANTHROPIC_API_KEY OPENAI_API_KEY OPENCODE_API_KEY CLINE_API_KEY; do
+for v in ANTHROPIC_API_KEY OPENAI_API_KEY OPENCODE_API_KEY CLINE_API_KEY ROO_API_KEY; do
   if [ -n "${!v:-}" ]; then echo "ok $v definida"; else echo "!  $v NAO definida (Secret agents-env nao montado?)" >&2; fi
 done
 
